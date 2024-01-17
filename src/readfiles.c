@@ -898,7 +898,31 @@ void read_input(SPARC_INPUT_OBJ *pSPARC_Input, SPARC_OBJ *pSPARC) {
             printf("Dens_up file name: %s\n", pSPARC_Input->InDensUCubFilename);
             printf("Dens_dw file name: %s\n", pSPARC_Input->InDensDCubFilename);
             #endif
-        } else {
+        }
+#ifdef USE_SOCKET
+	// Read SocketFlag, SocketHost, SocketPort, SocketINET from inpt
+	else if (strcmpi(str, "SOCKET_FLAG:") == 0) {
+	  fscanf(input_fp, "%d", &pSPARC_Input->SocketFlag);
+	  fscanf(input_fp, "%*[^\n]\n");
+	}
+	else if (strcmpi(str, "SOCKET_INET:") == 0) {
+	  fscanf(input_fp, "%d", &pSPARC_Input->socket_inet);
+	  fscanf(input_fp, "%*[^\n]\n");
+	}
+	else if (strcmpi(str, "SOCKET_PORT:") == 0) {
+	  fscanf(input_fp, "%d", &pSPARC_Input->socket_port);
+	  fscanf(input_fp, "%*[^\n]\n");
+	}
+	else if (strcmpi(str, "SOCKET_HOST:") == 0) {
+	  fscanf(input_fp, "%s", &pSPARC_Input->socket_host);
+	  fscanf(input_fp, "%*[^\n]\n");
+	}
+	else if (strcmpi(str, "SOCKET_MAX_NITER:") == 0) {
+	  fscanf(input_fp, "%d", &pSPARC_Input->socket_max_niter);
+	  fscanf(input_fp, "%*[^\n]\n");
+	}
+#endif	
+	else {
             printf("\nCannot recognize input variable identifier: \"%s\"\n",str);
             exit(EXIT_FAILURE);
         }
@@ -1585,31 +1609,7 @@ void read_ion(SPARC_INPUT_OBJ *pSPARC_Input, SPARC_OBJ *pSPARC) {
                    "Reminder: check if the number of atoms specified is inconsistent\n"
                    "          with the number of coordinates provided\n"); 
             exit(EXIT_FAILURE);
-        }
-#ifdef USE_SOCKET
-	// Read SocketFlag, SocketHost, SocketPort, SocketINET from inpt
-	else if (strcmpi(str, "SOCKET_FLAG:") == 0) {
-	  fscanf(input_fp, "%d", &pSPARC_Input->SocketFlag);
-	  fscanf(input_fp, "%*[^\n]\n");
-	}
-	else if (strcmpi(str, "SOCKET_INET:") == 0) {
-	  fscanf(input_fp, "%d", &pSPARC_Input->socket_inet);
-	  fscanf(input_fp, "%*[^\n]\n");
-	}
-	else if (strcmpi(str, "SOCKET_PORT:") == 0) {
-	  fscanf(input_fp, "%d", &pSPARC_Input->socket_port);
-	  fscanf(input_fp, "%*[^\n]\n");
-	}
-	else if (strcmpi(str, "SOCKET_HOST:") == 0) {
-	  fscanf(input_fp, "%s", &pSPARC_Input->socket_host);
-	  fscanf(input_fp, "%*[^\n]\n");
-	}
-	else if (strcmpi(str, "SOCKET_MAX_NITER:") == 0) {
-	  fscanf(input_fp, "%d", &pSPARC_Input->socket_max_niter);
-	  fscanf(input_fp, "%*[^\n]\n");
-	}
-#endif
-	else {
+        } else {
             printf("\nCannot recognize input variable identifier: \"%s\"",str);
             exit(EXIT_FAILURE);
         }
