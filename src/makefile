@@ -15,6 +15,9 @@ USE_FFTW      = 0
 # Set DEBUG_MODE = 1 to run with debug mode and print debug output
 DEBUG_MODE    = 0
 
+# Set USE_SOCKET = 0 to disable compilation with socket support
+USE_SOCKET    = 1
+
 # Enable SIMD vectorization for complex stencil routines
 # CAUTION: for some compilers this results in wrong results! Use for intel/19.0.3 or later versions
 ENABLE_SIMD_COMPLEX = 1
@@ -100,6 +103,14 @@ OBJSC = main.o initialization.o readfiles.o atomdata.o parallelization.o relax.o
         highT/sqProperties.o highT/sqtool.o   \
         cyclix/cyclix_tools.o cyclix/cyclix_forces.o cyclix/cyclix_gradVec.o cyclix/cyclix_lapVec.o \
         cyclix/cyclix_stress.o \
+
+# Switch the socket compilation
+# Please do not add socket related *.o files manually in OBJSC
+ifeq ($(USE_SOCKET), 1)
+CPPFLAGS += -Isocket/ -DUSE_SOCKET
+OBJSC := $(patsubst main.o,main_socket.o,$(OBJSC))
+OBJSC += socket/driver.o socket/libinetsocket.o socket/libunixsocket.o
+endif
 
 LIBBASE = ../lib/sparc
 TESTBASE = ../.ci
