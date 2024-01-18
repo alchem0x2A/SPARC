@@ -3947,6 +3947,7 @@ void write_output_init(SPARC_OBJ *pSPARC) {
     fclose(output_fp);
 
     // write .static file
+#ifndef USE_SOCKET
     if ((pSPARC->PrintAtomPosFlag == 1 || pSPARC->PrintForceFlag == 1) && pSPARC->MDFlag == 0 && pSPARC->RelaxFlag == 0) {
         FILE *static_fp = fopen(pSPARC->StaticFilename,"w");
         if (static_fp == NULL) {
@@ -3956,6 +3957,7 @@ void write_output_init(SPARC_OBJ *pSPARC) {
 
         // print atoms
         if (pSPARC->PrintAtomPosFlag == 1) {
+	    
             fprintf(static_fp,"***************************************************************************\n");
             fprintf(static_fp,"                            Atom positions                                 \n");
             fprintf(static_fp,"***************************************************************************\n");
@@ -3973,6 +3975,10 @@ void write_output_init(SPARC_OBJ *pSPARC) {
         }
         fclose(static_fp);
     }
+#else
+    // Use the print method in socket driver to print the static file
+    static_print_atom_pos(pSPARC);
+#endif
 }
 
 

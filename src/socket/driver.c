@@ -707,6 +707,17 @@ void static_print_atom_pos(SPARC_OBJ *pSPARC)
     if (rank != 0)
         return;
 
+    // Do not write header for socket mode at init stage
+    if ((pSPARC->SocketSCFCount == 0) && (pSPARC->SocketFlag == 1))
+        return;
+
+    // SocketFlag = 0 but SocketSCFCount != 0 cannot happen!
+    if ((pSPARC->SocketSCFCount != 0) && (pSPARC->SocketFlag == 0)){
+      perror("Internal error! SocketFlag = 0 but there is a non-zero SocketSCFCount, a bug may exist in the code. Please contact the developer.");
+      exit(-1);
+    }
+				       
+
     if ((pSPARC->PrintAtomPosFlag == 1 || pSPARC->PrintForceFlag == 1) && pSPARC->MDFlag == 0 && pSPARC->RelaxFlag == 0)
     {
         FILE *static_fp = fopen(pSPARC->StaticFilename, "a");
@@ -716,41 +727,44 @@ void static_print_atom_pos(SPARC_OBJ *pSPARC)
             exit(EXIT_FAILURE);
         }
 
-        // print atoms
-        // TODO: remove the unnecessary checks, since we're always using the socket mode here
+        // print atoms in either old static fashion or socket fashion
         if (pSPARC->PrintAtomPosFlag == 1)
-        {
-            if (pSPARC->SocketSCFCount > 1)
-            {
-                fprintf(static_fp, "***************************************************************************\n");
-                if (pSPARC->SocketFlag == 1)
-                    // socket mode special
-                    fprintf(static_fp, "                      Atom positions (socket step %d)                  \n", pSPARC->SocketSCFCount);
-                else
-                    fprintf(static_fp, "                            Atom positions                                 \n");
-                fprintf(static_fp, "***************************************************************************\n");
-                int count = 0;
-                for (int i = 0; i < pSPARC->Ntypes; i++)
-                {
-                    fprintf(static_fp, "Fractional coordinates of %s:\n", &pSPARC->atomType[L_ATMTYPE * i]);
-                    for (int j = 0; j < pSPARC->nAtomv[i]; j++)
-                    {
-                        fprintf(static_fp, "%18.10f %18.10f %18.10f\n",
-                                pSPARC->atom_pos[3 * count] / pSPARC->range_x,
-                                pSPARC->atom_pos[3 * count + 1] / pSPARC->range_y,
-                                pSPARC->atom_pos[3 * count + 2] / pSPARC->range_z);
-                        count++;
-                    }
-                }
-            }
+        { 
+	  if (pSPARC->SocketFlag == 1){
+	    fprintf(static_fp, "***************************************************************************\n");
+	    fprintf(static_fp, "                        Atom positions (socket step %d)                    \n", pSPARC->SocketSCFCount);
+	    fprintf(static_fp, "***************************************************************************\n");
+	  }
+	  else{
+	    fprintf(static_fp, "***************************************************************************\n");
+	    fprintf(static_fp,"                            Atom positions                                 \n");
+	    fprintf(static_fp, "***************************************************************************\n");
+	  }
+
+	  int count = 0;
+	  for (int i = 0; i < pSPARC->Ntypes; i++)
+	    {
+	      fprintf(static_fp, "Fractional coordinates of %s:\n", &pSPARC->atomType[L_ATMTYPE * i]);
+	      for (int j = 0; j < pSPARC->nAtomv[i]; j++)
+		{
+		  fprintf(static_fp, "%18.10f %18.10f %18.10f\n",
+			  pSPARC->atom_pos[3 * count] / pSPARC->range_x,
+			  pSPARC->atom_pos[3 * count + 1] / pSPARC->range_y,
+			  pSPARC->atom_pos[3 * count + 2] / pSPARC->range_z);
+		  count++;
+		}
+	    }
 
             // Step 2: print the LATVEC information (required for each)
+	  if (pSPARC->SocketFlag == 1){
             fprintf(static_fp, "Lattice (Bohr)\n");
-            fprintf(static_fp, "%18.10E %18.10E %18.10E \n", pSPARC->lattice[0], pSPARC->lattice[1], pSPARC->lattice[2]);
-            fprintf(static_fp, "%18.10E %18.10E %18.10E \n", pSPARC->lattice[3], pSPARC->lattice[4], pSPARC->lattice[5]);
-            fprintf(static_fp, "%18.10E %18.10E %18.10E \n", pSPARC->lattice[6], pSPARC->lattice[7], pSPARC->lattice[8]);
-            fclose(static_fp);
+            fprintf(static_fp, "%18.10E %18.10E %18.10E \n", pSPARC->LatVec[0], pSPARC->LatVec[1], pSPARC->LatVec[2]);
+            fprintf(static_fp, "%18.10E %18.10E %18.10E \n", pSPARC->LatVec[3], pSPARC->LatVec[4], pSPARC->LatVec[5]);
+            fprintf(static_fp, "%18.10E %18.10E %18.10E \n", pSPARC->LatVec[6], pSPARC->LatVec[7], pSPARC->LatVec[8]);
+	  }
         }
+	
+	fclose(static_fp);
     }
 }
 
