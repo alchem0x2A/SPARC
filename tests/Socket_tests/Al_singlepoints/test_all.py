@@ -1,17 +1,18 @@
 """Testing single point calculations between pure SPARC and socket mode
 """
 
-import ase
-from ase.io import read, write
-from ase.build import bulk
-from pathlib import Path
-from sparc import SPARC
-import numpy as np
-from ase.calculators.socketio import SocketIOCalculator
-from subprocess import Popen, PIPE
 import os
 import shutil
+from pathlib import Path
+from subprocess import PIPE, Popen
+
+import ase
+import numpy as np
+from ase.build import bulk
 from ase.calculators.singlepoint import SinglePointCalculator
+from ase.calculators.socketio import SocketIOCalculator
+from ase.io import read, write
+from sparc import SPARC
 
 os.environ["SPARC_PP_PATH"] = "../../../psps/"
 
@@ -82,10 +83,10 @@ def sparc_socket():
 
     calc = SocketIOCalculator(port=12345)
     p_ = Popen(
-                "mpirun -n 2 --oversubscribe ../../../../lib/sparc -socket :12345 -name SPARC > sparc.log 2>&1",
-                shell=True,
-                cwd=copy_to,
-            )
+        "mpirun -n 2 --oversubscribe ../../../../lib/sparc -socket :12345 -name SPARC > sparc.log 2>&1",
+        shell=True,
+        cwd=copy_to,
+    )
     out_images = []
     with calc:
         for i, atoms in enumerate(images):

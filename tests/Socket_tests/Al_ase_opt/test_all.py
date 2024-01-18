@@ -1,18 +1,20 @@
 """Testing single point calculations between pure SPARC and socket mode
 """
 
-import ase
-from ase.io import read, write
-from ase.build import bulk
-from pathlib import Path
-from sparc import SPARC
-import numpy as np
-from ase.calculators.socketio import SocketIOCalculator
-from subprocess import Popen, PIPE
 import os
 import shutil
+import time
+from pathlib import Path
+from subprocess import PIPE, Popen
+
+import ase
+import numpy as np
+from ase.build import bulk
 from ase.calculators.singlepoint import SinglePointCalculator
+from ase.calculators.socketio import SocketIOCalculator
+from ase.io import read, write
 from ase.optimize.lbfgs import LBFGS
+from sparc import SPARC
 
 os.environ["SPARC_PSP_PATH"] = "../../../psps/"
 
@@ -64,17 +66,19 @@ def sparc_socket():
     shutil.copy(inputs / "SPARC.inpt", copy_to)
     shutil.copy(inputs / "13_Al_3_1.9_1.9_pbe_n_v1.0.psp8", copy_to)
 
-    calc = SocketIOCalculator(port=12345)
-    p_ = Popen(
-        "mpirun -n 2 ../../../../lib/sparc -socket :12345 -name SPARC > sparc.log",
-        shell=True,
-        cwd=copy_to,
-    )
-    # out_images = []
-    with calc:
+    with SocketIOCalculator(port=12345) as calc:
+        time.sleep(
+            1.0
+        )  # In some emulated systems the SocketIOCalculator may delay binding
+        p_ = Popen(
+            "mpirun -n 1 ../../../../lib/sparc -socket :12345 -name SPARC > sparc.log",
+            shell=True,
+            cwd=copy_to,
+        )
         atoms.calc = calc
         opt = LBFGS(atoms, trajectory="sparc-socket.traj")
         opt.run(fmax=0.02)
+        p_.kill()
     return atoms.copy()
 
 
@@ -87,6 +91,7 @@ def main():
     positions_change = final_socket.positions - final_sparc.positions
     max_change = np.linalg.norm(positions_change)
     print("Max shift: ", max_change)
+    assert max_change < 0.02
 
 
 if __name__ == "__main__":

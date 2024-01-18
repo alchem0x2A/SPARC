@@ -1,19 +1,21 @@
 """Testing single point calculations between pure SPARC and socket mode
 """
 
-import ase
-from ase.io import read, write
-from ase.build import bulk
-from pathlib import Path
-from sparc import SPARC
-import numpy as np
-from ase.calculators.socketio import SocketIOCalculator
-from subprocess import Popen, PIPE
 import os
 import shutil
-from ase.calculators.singlepoint import SinglePointCalculator
+import time
+from pathlib import Path
+from subprocess import PIPE, Popen
 
-os.environ["SPARC_PP_PATH"] = "../../../psps/"
+import ase
+import numpy as np
+from ase.build import bulk
+from ase.calculators.singlepoint import SinglePointCalculator
+from ase.calculators.socketio import SocketIOCalculator
+from ase.io import read, write
+from sparc import SPARC
+
+os.environ["SPARC_PSP_PATH"] = "../../../psps/"
 
 sparc_params = {
     "h": 0.28,
@@ -80,15 +82,15 @@ def sparc_socket():
     shutil.copy(inputs / "SPARC.inpt", copy_to)
     shutil.copy(inputs / "13_Al_3_1.9_1.9_pbe_n_v1.0.psp8", copy_to)
 
-    calc = SocketIOCalculator(port=12345)
-    p_ = Popen(
-                "mpirun -n 2 --oversubscribe ../../../../lib/sparc -socket :12345 -name SPARC > sparc.log 2>&1",
-                shell=True,
-                cwd=copy_to,
-            )
     atoms = images[0]
     out_images = []
-    with calc:
+    with SocketIOCalculator(port=12345) as calc:
+        time.sleep(1)
+        p_ = Popen(
+            "mpirun -n 2 --oversubscribe ../../../../lib/sparc -socket :12345 -name SPARC > sparc.log 2>&1",
+            shell=True,
+            cwd=copy_to,
+        )
         for i in range(5):
             atoms.calc = calc
             # Force clean results
@@ -96,9 +98,7 @@ def sparc_socket():
             e = atoms.get_potential_energy()
             f = atoms.get_forces()
             s = atoms.get_stress()
-            e_old = read(
-                "sp_image00", format="sparc", index=-1
-            ).get_potential_energy()
+            e_old = read("sp_image00", format="sparc", index=-1).get_potential_energy()
             #             forces = atoms.get_forces()
             #             stress = atoms.get_stress()
             print("Cycle: ", i)
@@ -109,34 +109,38 @@ def sparc_socket():
                 atoms_cp, energy=e, forces=f, stress=s
             )
             out_images.append(atoms_cp)
+        p_.kill()
     return out_images
 
 
 def main():
     images_sparc = sparc_singlepoint()
     images_socket = sparc_socket()
-    # ediff = np.array(
-    #     [
-    #         img2.get_potential_energy() - img1.get_potential_energy()
-    #         for img1, img2 in zip(images_sparc, images_socket)
-    #     ]
-    # )
-    # fdiff = np.array(
-    #     [
-    #         img2.get_forces() - img1.get_forces()
-    #         for img1, img2 in zip(images_sparc, images_socket)
-    #     ]
-    # )
-    # sdiff = np.array(
-    #     [
-    #         img2.get_stress() - img1.get_stress()
-    #         for img1, img2 in zip(images_sparc, images_socket)
-    #     ]
-    # )
+    ediff = np.array(
+        [
+            img2.get_potential_energy() - img1.get_potential_energy()
+            for img1, img2 in zip(images_sparc, images_socket)
+        ]
+    )
+    fdiff = np.array(
+        [
+            img2.get_forces() - img1.get_forces()
+            for img1, img2 in zip(images_sparc, images_socket)
+        ]
+    )
+    sdiff = np.array(
+        [
+            img2.get_stress() - img1.get_stress()
+            for img1, img2 in zip(images_sparc, images_socket)
+        ]
+    )
 
-    # print("Ediff, ", np.max(np.abs(ediff)))
-    # print("Fdiff, ", np.max(np.abs(fdiff)))
-    # print("Sdiff, ", np.max(np.abs(sdiff)))
+    print("Ediff, ", np.max(np.abs(ediff)))
+    print("Fdiff, ", np.max(np.abs(fdiff)))
+    print("Sdiff, ", np.max(np.abs(sdiff)))
+    assert np.max(np.abs(ediff)) < 1.0e-8
+    assert np.max(np.abs(fdiff)) < 1.0e-8
+    assert np.max(np.abs(sdiff)) < 1.0e-8
 
 
 if __name__ == "__main__":
