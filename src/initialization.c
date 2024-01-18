@@ -1417,6 +1417,8 @@ void SPARC_copy_input(SPARC_OBJ *pSPARC, SPARC_INPUT_OBJ *pSPARC_Input) {
     strncpy(pSPARC->socket_host, pSPARC_Input->socket_host, sizeof(pSPARC->socket_host));
     pSPARC->socket_port = pSPARC_Input->socket_port;
     pSPARC->socket_max_niter = pSPARC_Input->socket_max_niter;
+    // pSPARC->SocketSCFCount needs to be initialized here for non-socket calculations
+    pSPARC->SocketSCFCount = 0;
     // Only SocketFlag and socket_max_ninter information is meaningful at all ranks
     MPI_Bcast(&pSPARC->SocketFlag, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&pSPARC->socket_max_niter, 1, MPI_INT, 0, MPI_COMM_WORLD);
