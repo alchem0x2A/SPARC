@@ -56,3 +56,36 @@ jobs:
         unset LD_LIBRARY_PATH
         python -c "import os, re; match = re.findall(r'Tests failed: (\d+)', open('output').read()); [print('All pass'), os._exit(0)] if int(match[0]) == 0 else [print('Failed'), os._exit(1)]"
         rm -rf output
+
+  build-linux-socket:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
+    strategy:
+      max-parallel: 5
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: conda-incubator/setup-miniconda@v2
+      with:
+        python-version: "3.10"
+        activate-environment: sparc-test
+        conda-build-version: ">=3.20"
+        #mamba-version: "*"
+        miniforge-variant: "Mambaforge" # Fix according to https://github.com/nextstrain/cli/commit/4a764976519ca5c540c745463548a9d883eae079
+        channels: conda-forge,defaults
+        channel-priority: true
+    - name: Install compiler dependencies
+      run: |
+        mamba install -c conda-forge python=3.10 pip compilers openmpi fftw openblas scalapack sparc-x-api
+    - name: Build the socket version
+      run: |
+        echo $CONDA_PREFIX
+        conda info
+        cd src/ && make -j2 USE_MKL=0 USE_SCALAPACK=1 USE_SOCKET=1
+  
+    - name: Run socket unit tests
+      run: |
+        echo
+    
