@@ -760,7 +760,7 @@ void static_print_atom_pos(SPARC_OBJ *pSPARC)
 
             // Step 2: print the LATVEC information (required for each)
 	  if (pSPARC->SocketFlag == 1){
-            fprintf(static_fp, "Lattice (Bohr)\n");
+            fprintf(static_fp, "Lattice (Bohr):\n");
             fprintf(static_fp, "%18.10E %18.10E %18.10E \n", pSPARC->LatVec[0], pSPARC->LatVec[1], pSPARC->LatVec[2]);
             fprintf(static_fp, "%18.10E %18.10E %18.10E \n", pSPARC->LatVec[3], pSPARC->LatVec[4], pSPARC->LatVec[5]);
             fprintf(static_fp, "%18.10E %18.10E %18.10E \n", pSPARC->LatVec[6], pSPARC->LatVec[7], pSPARC->LatVec[8]);
