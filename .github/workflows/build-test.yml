@@ -87,5 +87,6 @@ jobs:
   
     - name: Run socket unit tests
       run: |
-        echo
+        cd tests/Socket_tests
+        bash run_all.sh
     
