@@ -149,8 +149,8 @@ int initialize_Socket(SPARC_OBJ *pSPARC)
         char service[L_STRING];
         sprintf(service, "%d", pSPARC->socket_port);
 #ifdef DEBUG
-        printf("This is your service: %s\n", service);
-        printf("This is your service: %s\n", pSPARC->socket_host);
+	printf("This is your service: %s\n", service);
+	printf("This is your service: %s\n", pSPARC->socket_host);
 #endif // DEBUG
         socket_fd = create_inet_stream_socket(pSPARC->socket_host, service, LIBSOCKET_IPv4, 0);
         if (socket_fd == -1)
@@ -687,8 +687,7 @@ void write_message_to_socket(SPARC_OBJ *pSPARC, char *message)
     memset(clean_msg + strlen(message), ' ', IPI_HEADERLEN - strlen(message));
     clean_msg[IPI_HEADERLEN] = '\0';
 #ifdef DEBUG
-    if (rank == 0)
-        printf("@Driver mode: Sending message to socket: %s###\n", clean_msg);
+    printf("@Driver mode: Sending message to socket: %s###\n", clean_msg);
 #endif // DEBUG
     writeBuffer_string(pSPARC, clean_msg, IPI_HEADERLEN);
 }
@@ -709,8 +708,7 @@ void static_print_atom_pos(SPARC_OBJ *pSPARC)
         return;
 
 #ifdef DEBUG
-    if (rank == 0)
-      print("SocketSCFCOUNT is %d \n", pSPARC->SocketSCFCount);
+    printf("SocketSCFCOUNT is %d \n", pSPARC->SocketSCFCount);
 #endif
     // Do not write header for socket mode at init stage
     if ((pSPARC->SocketSCFCount == 0) && (pSPARC->SocketFlag == 1))
@@ -858,8 +856,8 @@ void main_Socket(SPARC_OBJ *pSPARC)
         else if (status == IPI_MSG_EXIT)
         {
 #ifdef DEBUG
-            if (rank == 0)
-                printf("Server requesting SPARC to exit. Break the loop.\n");
+	  if (rank == 0)
+	    printf("Server requesting SPARC to exit. Break the loop.\n");
 #endif // DEBUG
             break;
         }
