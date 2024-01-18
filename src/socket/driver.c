@@ -772,6 +772,10 @@ void main_Socket(SPARC_OBJ *pSPARC)
     status = -1; // -1: not initialized
     init = 1;
     hasdata = 0;
+#ifdef DEBUG
+    if (rank == 0)
+      printf("Status: socket_max_niter %d\n", pSPARC->socket_max_niter);
+#endif // DEBUG
     // TODO: option to specify N_MAXSTEPS (or directly taken from MD / relax?)
     while (pSPARC->SocketSCFCount <= pSPARC->socket_max_niter)
     {

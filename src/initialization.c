@@ -830,6 +830,19 @@ void set_defaults(SPARC_INPUT_OBJ *pSPARC_Input, SPARC_OBJ *pSPARC) {
 
     /* Default parameter for cyclix */
     pSPARC_Input->twist = 0.0;
+
+    /* Default socket options */
+#ifdef USE_SOCKET
+    // Defaults for pSPARC_Input, if not initialized by the cmdline
+    if (pSPARC_Input->SocketFlag != 1)
+    {
+        pSPARC_Input->SocketFlag = 0; // socket off
+        strncpy(pSPARC_Input->socket_host, "localhost", sizeof(pSPARC_Input->socket_host));
+        pSPARC_Input->socket_port = -1; // socket port
+        pSPARC_Input->socket_inet = 0;  // 0: -> default unix socket, 1: -> inet socket
+    }
+    pSPARC_Input->socket_max_niter = 10000; // Set to a very large number
+#endif   
 }
 
 

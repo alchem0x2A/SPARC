@@ -1001,7 +1001,7 @@ typedef struct _SPARC_OBJ{
     int socket_port;            // socket host
     int socket_inet;            // boolean value to indicate whether to use inet socket
     int socket_fd;             // socket file descriptor; This should be initialized to -1
-    int socket_max_niter;           // max number of iterations
+    int socket_max_niter;           // max number of iterations. Default is 10000
 #endif
 }SPARC_OBJ;
 
