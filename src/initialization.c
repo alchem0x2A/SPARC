@@ -251,13 +251,6 @@ void Initialize(SPARC_OBJ *pSPARC, int argc, char *argv[]) {
 #endif
         // check input arguments and read filename
         check_inputs(&SPARC_Input, argc, argv); 
-#ifdef DEBUG
-    if ( rank == 0) {
-        printf("Using socket? %d\n", SPARC_Input.SocketFlag);
-        printf("socket host %s\n", SPARC_Input.socket_host);
-        printf("socket port %d\n", SPARC_Input.socket_port);
-    }
-#endif
         
 
 #ifdef DEBUG
