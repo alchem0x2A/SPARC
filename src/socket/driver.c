@@ -687,7 +687,8 @@ void write_message_to_socket(SPARC_OBJ *pSPARC, char *message)
     memset(clean_msg + strlen(message), ' ', IPI_HEADERLEN - strlen(message));
     clean_msg[IPI_HEADERLEN] = '\0';
 #ifdef DEBUG
-    printf("@Driver mode: Sending message to socket: %s###\n", clean_msg);
+    if (rank == 0)
+        printf("@Driver mode: Sending message to socket: %s###\n", clean_msg);
 #endif // DEBUG
     writeBuffer_string(pSPARC, clean_msg, IPI_HEADERLEN);
 }
@@ -707,6 +708,10 @@ void static_print_atom_pos(SPARC_OBJ *pSPARC)
     if (rank != 0)
         return;
 
+#ifdef DEBUG
+    if (rank == 0)
+      print("SocketSCFCOUNT is %d \n", pSPARC->SocketSCFCount);
+#endif
     // Do not write header for socket mode at init stage
     if ((pSPARC->SocketSCFCount == 0) && (pSPARC->SocketFlag == 1))
         return;

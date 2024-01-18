@@ -83,7 +83,7 @@ jobs:
       run: |
         echo $CONDA_PREFIX
         conda info
-        cd src/ && make -j2 USE_MKL=0 USE_SCALAPACK=1 USE_SOCKET=1
+        cd src/ && make -j2 USE_MKL=0 USE_SCALAPACK=1 USE_SOCKET=1 DEBUG_MODE=1
   
     - name: Run socket unit tests
       run: |

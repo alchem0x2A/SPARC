@@ -16,7 +16,7 @@ USE_FFTW      = 0
 DEBUG_MODE    = 0
 
 # Set USE_SOCKET = 0 to disable compilation with socket support
-USE_SOCKET    = 1
+USE_SOCKET    = 0
 
 # Enable SIMD vectorization for complex stencil routines
 # CAUTION: for some compilers this results in wrong results! Use for intel/19.0.3 or later versions
