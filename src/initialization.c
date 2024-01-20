@@ -3972,7 +3972,7 @@ void write_output_init(SPARC_OBJ *pSPARC) {
     }
 #else
     // Use the print method in socket driver to print the static file
-    static_print_atom_pos(pSPARC);
+    socket_static_print_atom_pos(pSPARC);
 #endif
 }
 

@@ -711,7 +711,7 @@ int write_message_to_socket(SPARC_OBJ *pSPARC, char *message)
  *         this is an updated version from write_output_init.
  *         we skip the first step since it's already initialized
  */
-void static_print_atom_pos(SPARC_OBJ *pSPARC)
+void socket_static_print_atom_pos(SPARC_OBJ *pSPARC)
 {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -871,7 +871,7 @@ void main_Socket(SPARC_OBJ *pSPARC)
 	      print_socket_err = 1;
 	      break;
 	    }
-	  static_print_atom_pos(pSPARC);
+	  socket_static_print_atom_pos(pSPARC);
 	  if (init == 1)
             {
 	      init = 0;
