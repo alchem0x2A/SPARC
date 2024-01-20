@@ -227,7 +227,7 @@ int readBuffer(int fd, void *data, int len)
   if (n == 0)
     {
       perror("Error reading from socket: server has quit or connection broke");
-      exit(-1);
+      return -1;
     }
   return 0;
 }
@@ -247,10 +247,7 @@ int writeBuffer_double(SPARC_OBJ *pSPARC, const double data_d)
   int sockfd = pSPARC->socket_fd;
   int ret = write(sockfd, &data_d, sizeof(double));
   if (ret < 0)
-    {
-      printf("Failed to write to socket fd %d, exiting...\n", sockfd);
-      exit(EXIT_FAILURE);
-    }
+    fprintf(stderr, "Failed to write to socket fd %d, exiting...\n", sockfd);
   return ret;
 }
 
@@ -259,10 +256,7 @@ int writeBuffer_int(SPARC_OBJ *pSPARC, const int data_i)
   int sockfd = pSPARC->socket_fd;
   int ret = write(sockfd, &data_i, sizeof(int));
   if (ret < 0)
-    {
-      printf("Failed to write to socket fd %d, exiting...\n", sockfd);
-      exit(EXIT_FAILURE);
-    }
+    fprintf(stderr, "Failed to write to socket fd %d, exiting...\n", sockfd);
   return ret;
 }
 
@@ -271,10 +265,7 @@ int writeBuffer_char(SPARC_OBJ *pSPARC, const char c)
   int sockfd = pSPARC->socket_fd;
   int ret = write(sockfd, &c, sizeof(char));
   if (ret < 0)
-    {
-      printf("Failed to write to socket fd %d, exiting...\n", sockfd);
-      exit(EXIT_FAILURE);
-    }
+    fprintf(stderr, "Failed to write to socket fd %d, exiting...\n", sockfd);
   return ret;
 }
 
@@ -283,10 +274,7 @@ int writeBuffer_double_vec(SPARC_OBJ *pSPARC, const double *data_dv, int len)
   int sockfd = pSPARC->socket_fd;
   int ret = write(sockfd, data_dv, sizeof(double) * len);
   if (ret < 0)
-    {
-      printf("Failed to write to socket fd %d, exiting...\n", sockfd);
-      exit(EXIT_FAILURE);
-    }
+    fprintf(stderr, "Failed to write to socket fd %d, exiting...\n", sockfd);
   return ret;
 }
 
@@ -295,10 +283,7 @@ int writeBuffer_int_vec(SPARC_OBJ *pSPARC, const int *data_iv, int len)
   int sockfd = pSPARC->socket_fd;
   int ret = write(sockfd, data_iv, sizeof(int) * len);
   if (ret < 0)
-    {
-      printf("Failed to write to socket fd %d, exiting...\n", sockfd);
-      exit(EXIT_FAILURE);
-    }
+    fprintf(stderr, "Failed to write to socket fd %d, exiting...\n", sockfd);
   return ret;
 }
 
@@ -307,10 +292,7 @@ int writeBuffer_string(SPARC_OBJ *pSPARC, const char *str, int len)
   int sockfd = pSPARC->socket_fd;
   int ret = write(sockfd, str, sizeof(char) * len);
   if (ret < 0)
-    {
-      printf("Failed to write to socket fd %d, exiting...\n", sockfd);
-      exit(EXIT_FAILURE);
-    }
+    fprintf(stderr, "Failed to write to socket fd %d, exiting...\n", sockfd);
   return ret;
 }
 
