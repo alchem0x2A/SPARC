@@ -484,12 +484,12 @@ void reassign_atoms_info(SPARC_OBJ *pSPARC, int natoms, double *atom_pos, double
  * @brief  Read message from sparc and return a status code
  *         Use status defined in socket.h
  **/
-int read_socket_header(SPARC_OBJ *pSPARC)
+int read_socket_header(SPARC_OBJ *pSPARC, int *status)
 {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  int ret, status;
+  int ret = 0;
   char header[IPI_HEADERLEN];
   int sockfd = pSPARC->socket_fd;
 
@@ -502,30 +502,29 @@ int read_socket_header(SPARC_OBJ *pSPARC)
       // Status code should broadcast to
       if (ret < 0)
         {
-	  // TODO: better exit code here?
-	  printf("Failed to read from socket fd %d, exiting...\n", sockfd);
-	  exit(EXIT_FAILURE);
+	  fprintf(stderr, "Failed to read from socket fd %d, exiting...\n", sockfd);
         }
       // Trim the string and compare with upper case letters
-      if (strncasecmp(header, "STATUS", strlen("STATUS")) == 0)
+      else if (strncasecmp(header, "STATUS", strlen("STATUS")) == 0)
         {
-	  status = IPI_MSG_STATUS;
+	  *status = IPI_MSG_STATUS;
         }
       else if (strncasecmp(header, "POSDATA", strlen("POSDATA")) == 0)
         {
-	  status = IPI_MSG_POSDATA;
+	  *status = IPI_MSG_POSDATA;
         }
       else if (strncasecmp(header, "GETFORCE", strlen("GETFORCE")) == 0)
         {
-	  status = IPI_MSG_GETFORCE;
+	  *status = IPI_MSG_GETFORCE;
         }
       else
         {
-	  status = IPI_MSG_OTHER;
+	  *status = IPI_MSG_OTHER;
         }
     }
-  MPI_Bcast(&status, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  return status;
+  MPI_Bcast(&ret, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(status, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  return ret;
 }
 
 /**
@@ -767,7 +766,7 @@ void main_Socket(SPARC_OBJ *pSPARC)
     printf("Starting socket communication\n");
 #endif // DEBUG
   int sfd = pSPARC->socket_fd;
-  int status, init, hasdata;
+  int status, init, hasdata, retcode;
   status = -1; // -1: not initialized
   init = 1;
   hasdata = 0;
@@ -778,7 +777,9 @@ void main_Socket(SPARC_OBJ *pSPARC)
   // TODO: option to specify N_MAXSTEPS (or directly taken from MD / relax?)
   while (pSPARC->SocketSCFCount <= pSPARC->socket_max_niter)
     {
-      status = read_socket_header(pSPARC);
+      retcode = read_socket_header(pSPARC, &status);
+      // This happens frequently from socket server closing
+      if (retcode != 0) break;
       if (status == IPI_MSG_STATUS)
         {
 	  // TODO: may want to implement the NEEDINIT method
