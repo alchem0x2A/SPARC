@@ -71,7 +71,7 @@ def sparc_socket():
             1.0
         )  # In some emulated systems the SocketIOCalculator may delay binding
         p_ = Popen(
-            "mpirun -n 1 ../../../../lib/sparc -socket :12345 -name SPARC > sparc.log",
+            "mpirun -n 2 ../../../../lib/sparc -socket :12345 -name SPARC > sparc.log",
             shell=True,
             cwd=copy_to,
         )
