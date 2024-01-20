@@ -227,7 +227,7 @@ int readBuffer(int fd, void *data, int len)
   if (n == 0)
     {
       perror("Error reading from socket: server has quit or connection broke");
-      return -1;
+      exit(-1);
     }
   return 0;
 }
@@ -240,7 +240,7 @@ int readBuffer(int fd, void *data, int len)
 // }
 
 /**
- * @brief  Write functions. They are intended to be used only for one MPI rank
+ * @brief  Write functions
  **/
 int writeBuffer_double(SPARC_OBJ *pSPARC, const double data_d)
 {
@@ -315,8 +315,7 @@ int writeBuffer_string(SPARC_OBJ *pSPARC, const char *str, int len)
 }
 
 /**
- * @brief  The following are read function for different data types, they should
- only be relied to run on one rank
+ * @brief  Read functions
  * **/
 
 int readBuffer_double(SPARC_OBJ *pSPARC, double *data_d)
@@ -490,7 +489,7 @@ void reassign_atoms_info(SPARC_OBJ *pSPARC, int natoms, double *atom_pos, double
   Calculate_kpoints(pSPARC);
   if (pSPARC->Nkpts >= 1 && pSPARC->kptcomm_index != -1) {
     Calculate_local_kpoints(pSPARC);
-  } 
+  }
   Calculate_PseudochargeCutoff(pSPARC);
 
 
@@ -499,18 +498,16 @@ void reassign_atoms_info(SPARC_OBJ *pSPARC, int natoms, double *atom_pos, double
   memcpy(pSPARC->atom_pos, atom_pos, sizeof(double) * 3 * natoms);
 }
 
-
-/* The following read_*** and write_*** functions are all intended to run on all ranks  */
 /**
  * @brief  Read message from sparc and return a status code
  *         Use status defined in socket.h
  **/
-int read_socket_header(SPARC_OBJ *pSPARC, int *status)
+int read_socket_header(SPARC_OBJ *pSPARC)
 {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  int ret = 0;
+  int ret, status;
   char header[IPI_HEADERLEN];
   int sockfd = pSPARC->socket_fd;
 
@@ -524,31 +521,29 @@ int read_socket_header(SPARC_OBJ *pSPARC, int *status)
       if (ret < 0)
         {
 	  // TODO: better exit code here?
-	  perror("Failed to read header from socket. Will exit the program");
+	  printf("Failed to read from socket fd %d, exiting...\n", sockfd);
+	  exit(EXIT_FAILURE);
         }
-      else{
-        // Trim the string and compare with upper case letters
-        if (strncasecmp(header, "STATUS", strlen("STATUS")) == 0)
-	  {
-            *status = IPI_MSG_STATUS;
-	  }
-        else if (strncasecmp(header, "POSDATA", strlen("POSDATA")) == 0)
-	  {
-            *status = IPI_MSG_POSDATA;
-	  }
-        else if (strncasecmp(header, "GETFORCE", strlen("GETFORCE")) == 0)
-	  {
-            *status = IPI_MSG_GETFORCE;
-	  }
-        else
-	  {
-            *status = IPI_MSG_OTHER;
-	  }
-      }
+      // Trim the string and compare with upper case letters
+      if (strncasecmp(header, "STATUS", strlen("STATUS")) == 0)
+        {
+	  status = IPI_MSG_STATUS;
+        }
+      else if (strncasecmp(header, "POSDATA", strlen("POSDATA")) == 0)
+        {
+	  status = IPI_MSG_POSDATA;
+        }
+      else if (strncasecmp(header, "GETFORCE", strlen("GETFORCE")) == 0)
+        {
+	  status = IPI_MSG_GETFORCE;
+        }
+      else
+        {
+	  status = IPI_MSG_OTHER;
+        }
     }
-  MPI_Bcast(ret, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  MPI_Bcast(status, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  return ret;
+  MPI_Bcast(&status, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  return status;
 }
 
 /**
@@ -556,39 +551,23 @@ int read_socket_header(SPARC_OBJ *pSPARC, int *status)
  *        MPI broadcast is done in this function
  *
  **/
-int read_atoms_position_fom_socket(SPARC_OBJ *pSPARC, int init)
+void read_atoms_position_fom_socket(SPARC_OBJ *pSPARC, int init)
 {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   // TODO: check if status is in IPI_MSG_POSDATA
   int sockfd = pSPARC->socket_fd;
   int natoms;
-  int ret = 0;
   double ipi_cell[9], ipi_inv_cell[9];
   // The read process will need to get the forces, although we don't pass them back to SPARC
   double *ipi_atom_pos, *ipi_forces;
-    
-  // Make sure all readBuffer_* are soft-terminated
-  if (rank == 0) ret = readBuffer_double_vec(pSPARC, ipi_cell, 9);
-  MPI_Bcast(&ret, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  if (ret < 0){
-    if (rank == 0)  perror("Error reading Cell from socket. Will exit program");
-    return ret;
-      }
-    
-  if (rank == 0) ret = readBuffer_double_vec(pSPARC, ipi_inv_cell, 9);
-  MPI_Bcast(&ret, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  if (ret < 0){
-    if (rank == 0)  perror("Error reading Inverse-Cell from socket. Will exit program");
-    return ret;
-      }
-    
-  if (rank ==0) ret = readBuffer_int(pSPARC, &natoms);
-  MPI_Bcast(&ret, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  if (ret < 0){
-    if (rank == 0)  perror("Error reading N_atoms from socket. Will exit program");
-    return ret;
-      }
+  // TODO: do read at rank0
+  if (rank == 0)
+    {
+      readBuffer_double_vec(pSPARC, ipi_cell, 9);
+      readBuffer_double_vec(pSPARC, ipi_inv_cell, 9);
+      readBuffer_int(pSPARC, &natoms);
+    }
   // Bcast info to each rank
   MPI_Bcast(&natoms, 1, MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Bcast(ipi_cell, 9, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -599,13 +578,10 @@ int read_atoms_position_fom_socket(SPARC_OBJ *pSPARC, int init)
   ipi_forces = (double *)malloc(sizeof(double) * 3 * natoms);
 
   // Read real positions, now rank 0
-  if (rank == 0) ret = readBuffer_double_vec(pSPARC, ipi_atom_pos, 3 * natoms);
-  MPI_Bcast(&ret, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  if (ret < 0){
-    if (rank == 0)  perror("Error reading AtomPos from socket. Will exit program");
-    return ret;
-      }
-    
+  if (rank == 0)
+    {
+      readBuffer_double_vec(pSPARC, ipi_atom_pos, 3 * natoms);
+    }
   MPI_Bcast(ipi_atom_pos, 3 * natoms, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   // TODO: make sure the values are broadcast
   // TODO: wrap cell for the positions
@@ -625,8 +601,6 @@ int read_atoms_position_fom_socket(SPARC_OBJ *pSPARC, int init)
 
   free(ipi_atom_pos);
   free(ipi_forces);
-  MPI_Bcast(&ret, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  return ret;
 }
 
 /**
@@ -663,15 +637,14 @@ void stress_to_virial(SPARC_OBJ *pSPARC, double *virial)
   memcpy(virial, virial_calc, sizeof(double) * 9);
 }
 
-int write_forces_to_socket(SPARC_OBJ *pSPARC)
+void write_forces_to_socket(SPARC_OBJ *pSPARC)
 {
   // TODO: check if status is in IPI_MSG_POSDATA
   int rank;
-  int ret = 0;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  /* if (rank == 0) */
-  /*   return; */
+  if (rank != 0)
+    return;
 
   int sockfd = pSPARC->socket_fd;
   int natoms = pSPARC->n_atom;
@@ -683,70 +656,30 @@ int write_forces_to_socket(SPARC_OBJ *pSPARC)
   ipi_potential = pSPARC->Etot;
   memcpy(ipi_forces, pSPARC->forces, sizeof(double) * 3 * natoms);
   stress_to_virial(pSPARC, ipi_virial);
-
-  // Allow soft error handling when socket server is not ready
-  if (rank == 0) ret = write_message_to_socket(pSPARC, "FORCEREADY");
-  MPI_Bcast(&ret, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  if (ret < 0){
-    if (rank == 0)  perror("Error writing message to socket. Will exit program");
-    return ret;
-      }
-  
-  if (rank == 0) ret = writeBuffer_double(pSPARC, ipi_potential);
-  MPI_Bcast(&ret, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  if (ret < 0){
-    if (rank == 0)  perror("Error writing potential energy to socket. Will exit program");
-    return ret;
-      }
-  
-  if (rank == 0) ret = writeBuffer_int(pSPARC, natoms);
-  MPI_Bcast(&ret, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  if (ret < 0){
-    if (rank == 0)  perror("Error writing N_atoms to socket. Will exit program");
-    return ret;
-      }
-  
-  if (rank == 0) ret = writeBuffer_double_vec(pSPARC, ipi_forces, 3 * natoms);
-  MPI_Bcast(&ret, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  if (ret < 0){
-    if (rank == 0)  perror("Error writing forces to socket. Will exit program");
-    return ret;
-      }
-  
-  if (rank == 0) ret = writeBuffer_double_vec(pSPARC, ipi_virial, 9);
-  MPI_Bcast(&ret, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  if (ret < 0){
-    if (rank == 0)  perror("Error writing stress info to socket. Will exit program");
-    return ret;
-      }
+  write_message_to_socket(pSPARC, "FORCEREADY");
+  writeBuffer_double(pSPARC, ipi_potential);
+  writeBuffer_int(pSPARC, natoms);
+  writeBuffer_double_vec(pSPARC, ipi_forces, 3 * natoms);
+  writeBuffer_double_vec(pSPARC, ipi_virial, 9);
   // No more message to send
   // TODO: what about output the SPARC serialization?
-  if (rank == 0) ret = writeBuffer_int(pSPARC, 0);
-  MPI_Bcast(&ret, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  if (ret < 0){
-    if (rank == 0)  perror("Error extra buffer data to socket. Will exit program");
-    return ret;
-      }
-
-  MPI_Bcast(&ret, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  return ret;
+  writeBuffer_int(pSPARC, 0);
 }
 
-int write_message_to_socket(SPARC_OBJ *pSPARC, char *message)
+void write_message_to_socket(SPARC_OBJ *pSPARC, char *message)
 {
   int rank;
-  int ret = 0;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
   if (rank != 0)
-    return 0;
+    return;
 
   int sockfd = pSPARC->socket_fd;
   char clean_msg[IPI_HEADERLEN + 1];
   // memset(clean_msg, ' ', IPI_HEADERLEN + 1);
   if (strlen(message) > IPI_HEADERLEN)
     {
-      fprintf(stderr, "Message header %s is too long to be sent through socket! Please contact the developer\n", message);
+      printf("Message header %s is too long to be sent through socket!\n", message);
       exit(EXIT_FAILURE);
     }
 
@@ -756,8 +689,7 @@ int write_message_to_socket(SPARC_OBJ *pSPARC, char *message)
 #ifdef DEBUG
   printf("@Driver mode: Sending message to socket: %s###\n", clean_msg);
 #endif // DEBUG
-  ret = writeBuffer_string(pSPARC, clean_msg, IPI_HEADERLEN);
-  return ret;
+  writeBuffer_string(pSPARC, clean_msg, IPI_HEADERLEN);
 }
 
 /**
@@ -854,10 +786,6 @@ void main_Socket(SPARC_OBJ *pSPARC)
 #endif // DEBUG
   int sfd = pSPARC->socket_fd;
   int status, init, hasdata;
-
-  // Tracking return code
-  int retcode = 0;
-    
   status = -1; // -1: not initialized
   init = 1;
   hasdata = 0;
@@ -868,20 +796,17 @@ void main_Socket(SPARC_OBJ *pSPARC)
   // TODO: option to specify N_MAXSTEPS (or directly taken from MD / relax?)
   while (pSPARC->SocketSCFCount <= pSPARC->socket_max_niter)
     {
-      retcode = read_socket_header(pSPARC, &status);
-      if (retcode < 0) break;
+      status = read_socket_header(pSPARC);
       if (status == IPI_MSG_STATUS)
         {
 	  // TODO: may want to implement the NEEDINIT method
 	  if (hasdata == 1)
             {
-	      retcode = write_message_to_socket(pSPARC, "HAVEDATA");
-	      if (retcode < 0) break;
+	      write_message_to_socket(pSPARC, "HAVEDATA");
             }
 	  else
             {
-	      retcode = write_message_to_socket(pSPARC, "READY");
-	      if (retcode < 0) break;
+	      write_message_to_socket(pSPARC, "READY");
             }
         }
       else if (status == IPI_MSG_NEEDINIT)
@@ -894,8 +819,7 @@ void main_Socket(SPARC_OBJ *pSPARC)
         {
 	  // Need to put the SocketSCFCount first due to print
 	  pSPARC->SocketSCFCount++;
-	  retcode = read_atoms_position_fom_socket(pSPARC, init);
-	  if (retcode < 0) break;
+	  read_atoms_position_fom_socket(pSPARC, init);
 	  static_print_atom_pos(pSPARC);
 	  if (init == 1)
             {
@@ -920,8 +844,7 @@ void main_Socket(SPARC_OBJ *pSPARC)
         }
       else if (status == IPI_MSG_GETFORCE)
         {
-	  retcode = write_forces_to_socket(pSPARC);
-	  if (retcode < 0) break;
+	  write_forces_to_socket(pSPARC);
 	  hasdata = 0;
         }
       else if (status == IPI_MSG_OTHER)
