@@ -640,10 +640,11 @@ void stress_to_virial(SPARC_OBJ *pSPARC, double *virial)
   memcpy(virial, virial_calc, sizeof(double) * 9);
 }
 
-void write_forces_to_socket(SPARC_OBJ *pSPARC)
+int write_forces_to_socket(SPARC_OBJ *pSPARC)
 {
   // TODO: check if status is in IPI_MSG_POSDATA
   int rank;
+  int ret = 1;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
   int sockfd = pSPARC->socket_fd;
@@ -656,16 +657,22 @@ void write_forces_to_socket(SPARC_OBJ *pSPARC)
   ipi_potential = pSPARC->Etot;
   memcpy(ipi_forces, pSPARC->forces, sizeof(double) * 3 * natoms);
   stress_to_virial(pSPARC, ipi_virial);
-  write_message_to_socket(pSPARC, "FORCEREADY");
+  /* If any return value is -1, it will make final ret 0 */
+  ret &= (write_message_to_socket(pSPARC, "FORCEREADY") + 1);
   if (rank == 0){
-  writeBuffer_double(pSPARC, ipi_potential);
-  writeBuffer_int(pSPARC, natoms);
-  writeBuffer_double_vec(pSPARC, ipi_forces, 3 * natoms);
-  writeBuffer_double_vec(pSPARC, ipi_virial, 9);
-  // No more message to send
-  // TODO: what about output the SPARC serialization?
-  writeBuffer_int(pSPARC, 0);
+    ret &= (writeBuffer_double(pSPARC, ipi_potential) + 1);
+    ret &= (writeBuffer_int(pSPARC, natoms) + 1);
+    ret &= (writeBuffer_double_vec(pSPARC, ipi_forces, 3 * natoms) + 1);
+    ret &= (writeBuffer_double_vec(pSPARC, ipi_virial, 9) + 1);
+    // No more message to send
+    // TODO: what about output the SPARC serialization?
+    ret &= (writeBuffer_int(pSPARC, 0) + 1);
   }
+  ret -= 1;
+  if ((ret < 0) && (rank == 0))
+    perror("Error writing potential / forces / stress to socket server! Exit...\n");
+  MPI_Bcast(&ret, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  return ret;
 }
 
 /* Wrapper for writer message. This is a function for all ranks */
@@ -888,7 +895,12 @@ void main_Socket(SPARC_OBJ *pSPARC)
         }
       else if (status == IPI_MSG_GETFORCE)
         {
-	  write_forces_to_socket(pSPARC);
+	  retcode = write_forces_to_socket(pSPARC);
+	  if (retcode < 0)
+	    {
+	      print_socket_err = 1;
+	      break;
+	    }
 	  hasdata = 0;
         }
       else if (status == IPI_MSG_OTHER)
