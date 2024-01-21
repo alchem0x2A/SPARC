@@ -55,6 +55,14 @@ void main_Socket(SPARC_OBJ *pSPARC);
 #define IPI_MSG_POSDATA 2
 #define IPI_MSG_GETFORCE 3
 #define IPI_MSG_OTHER 4
+
+/*
+  Below are extended MSG states for extended SPARC protocol.
+  New protocol keywords should be defined starting from 100
+ */
+#define SPARC_MSG_SETPARAM 100
+
+/* Exit status */
 #define IPI_MSG_EXIT 999
 
 // Hartree to eV conversions

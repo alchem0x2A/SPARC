@@ -526,6 +526,11 @@ int read_socket_header(SPARC_OBJ *pSPARC, int *status)
         {
 	  *status = IPI_MSG_GETFORCE;
         }
+      /* Extra keywords for extended SPARC protocol */
+      else if (strncasecmp(header, "SETPARAM", strlen("SETPARAM")) == 0)
+        {
+	  *status = SPARC_MSG_SETPARAM;
+        }
       else
         {
 	  *status = IPI_MSG_OTHER;
@@ -809,6 +814,39 @@ void print_socket_error_info(SPARC_OBJ *pSPARC)
 }
 
 /**
+ Below are functions used for extended SPARC protocol controls
+ Most of them are still in proof-of-concept stage, to showcase
+ that message passing is doable
+ **/
+
+/**@brief Test function to set parameter in SPARC. For now, only demonstrate read and write are possible
+ **/
+int read_setparam(SPARC_OBJ *pSPARC)
+{
+  int rank;
+  int ret = 0;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  // TODO: check if status is in IPI_MSG_POSDATA
+  int sockfd = pSPARC->socket_fd;
+  int msglen = 0;
+  char *msg;
+  if (rank == 0)
+    {
+      readBuffer_int(pSPARC, &msglen);
+      printf("Will receive a msg with length %d\n", msglen);
+      msg = (char *)malloc(sizeof(char) * (msglen + 1));
+      msg[msglen] = '\0';
+      readBuffer_string(pSPARC, msg, (msglen + 1));
+      printf("Received message %s\n", msg);
+      free(msg);
+    }
+  // TODO: when it's a real function, make return values correct
+  return 0;
+}
+
+/** End SPARC protocol functions **/
+
+/**
  *
  *
  * @brief  Main function to implement socket communication. It should be independent of other main_Functions
@@ -903,6 +941,13 @@ void main_Socket(SPARC_OBJ *pSPARC)
 	    }
 	  hasdata = 0;
         }
+      /* All extended SPARC protocol states should be listed here! */
+      else if (status == SPARC_MSG_SETPARAM)
+	{
+	  // The message should be received after status READY
+	  retcode = read_setparam(pSPARC);
+	}
+      /* END of SPARC protocol settings */
       else if (status == IPI_MSG_OTHER)
         {
 	  if (rank == 0)
