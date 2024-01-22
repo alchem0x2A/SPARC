@@ -832,12 +832,22 @@ int read_setparam(SPARC_OBJ *pSPARC)
   char *msg;
   if (rank == 0)
     {
+      printf("Receiving param name \n");
       readBuffer_int(pSPARC, &msglen);
       printf("Will receive a msg with length %d\n", msglen);
       msg = (char *)malloc(sizeof(char) * (msglen + 1));
+      readBuffer_string(pSPARC, msg, msglen);
       msg[msglen] = '\0';
-      readBuffer_string(pSPARC, msg, (msglen + 1));
-      printf("Received message %s\n", msg);
+      printf("Received param %s\n", msg);
+      free(msg);
+
+      printf("Receiving param value \n");
+      readBuffer_int(pSPARC, &msglen);
+      printf("Will receive a msg with length %d\n", msglen);
+      msg = (char *)malloc(sizeof(char) * (msglen + 1));
+      readBuffer_string(pSPARC, msg, msglen);
+      msg[msglen] = '\0';
+      printf("Received value %s\n", msg);
       free(msg);
     }
   // TODO: when it's a real function, make return values correct
