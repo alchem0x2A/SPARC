@@ -223,7 +223,9 @@ int close_Socket(SPARC_OBJ *pSPARC)
 int readBuffer(int fd, void *data, int len)
 {
   int n, nr;
+  printf("Waiting to read.......\n");
   n = nr = read(fd, data, len);
+  printf("After reading, there are n %d\n", n);
   while (nr > 0 && n < len)
     {
       printf("Read %d bytes", nr);
@@ -495,16 +497,21 @@ void reassign_atoms_info(SPARC_OBJ *pSPARC, int natoms, double *atom_pos, double
  **/
 int read_socket_header(SPARC_OBJ *pSPARC, int *status)
 {
-  int rank;
+  int rank, size, rank0_finish;
+  double sleep_interval = 1.0;	// Checking every 0.5 seconds
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+  rank0_finish = 0;		// Helper for other ranks to check
   int ret = 0;
   char header[IPI_HEADERLEN];
   int sockfd = pSPARC->socket_fd;
+  MPI_Request request;
 
   if (rank == 0)
     {
       ret = readBuffer_string(pSPARC, header, IPI_HEADERLEN);
+      rank0_finish = 1;
 #ifdef DEBUG
       printf("@Driver mode: get raw header %s\n", header);
 #endif
@@ -535,7 +542,25 @@ int read_socket_header(SPARC_OBJ *pSPARC, int *status)
         {
 	  *status = IPI_MSG_OTHER;
         }
+      /* Notify other ranks */
+      for (int i = 1; i < size; i++){
+	MPI_Isend(&rank0_finish, 1, MPI_INT, i, 0, MPI_COMM_WORLD, &request);
+      }
     }
+  else {
+    MPI_Irecv(&rank0_finish, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &request);
+    int ready = 0;
+    while (rank0_finish == 0){
+      MPI_Test(&request, &ready, MPI_STATUS_IGNORE);
+      if (ready == 0)
+	sleep(sleep_interval);
+      else if (rank0_finish == 0){
+	printf("Received rank0_finish %d at rank %d, this is a bug.\n", rank0_finish, rank);
+	exit(1);
+      }
+    }
+  }
+  MPI_Barrier(MPI_COMM_WORLD);
   MPI_Bcast(&ret, 1, MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Bcast(status, 1, MPI_INT, 0, MPI_COMM_WORLD);
   return ret;
@@ -625,8 +650,8 @@ void stress_to_virial(SPARC_OBJ *pSPARC, double *virial)
   if (pSPARC->BC != 2)
     {
       if (rank == 0)
-	printf("SPARC's socket interface only supports stress information on PBC!\n");
-      exit(EXIT_FAILURE);
+	printf("Only PBC has reliable stress in SPARC!\n");
+      /* exit(EXIT_FAILURE); */
     }
   double volCell = pSPARC->Jacbdet * pSPARC->range_x * pSPARC->range_y * pSPARC->range_z;
   // TODO: double check the annotation
