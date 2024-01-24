@@ -488,6 +488,77 @@ void reassign_atoms_info(SPARC_OBJ *pSPARC, int natoms, double *atom_pos, double
 
   pSPARC->atom_pos = (double *)malloc(sizeof(double) * 3 * natoms);
   memcpy(pSPARC->atom_pos, atom_pos, sizeof(double) * 3 * natoms);
+
+  // map positions back into the domain if necessary, the function is taken from initialization.c
+  if (pSPARC->BCx == 0) {
+    double x;
+    for (i = 0; i < pSPARC->n_atom; i++) {
+      x = *(pSPARC->atom_pos+3*i);
+      if (x < 0 || x > pSPARC->range_x)
+	{
+	  x = fmod(x,pSPARC->range_x);
+	  *(pSPARC->atom_pos+3*i) = x + (x<0.0)*pSPARC->range_x;
+	}
+    }
+  } else if (rank == 0) {
+    // for Dirichlet BC, exit if atoms goes out of the domain
+    double x;
+    for (i = 0; i < pSPARC->n_atom; i++) {
+      x = *(pSPARC->atom_pos+3*i);
+      if (x < pSPARC->xin || x > pSPARC->range_x + pSPARC->xin)
+	{
+	  printf("\nERROR: position of atom # %d is out of the domain with Dirichlet BC!\n",i+1);
+	  exit(EXIT_FAILURE);
+	}
+    }
+  }
+
+  if (pSPARC->BCy == 0) {
+    double y;
+    for (i = 0; i < pSPARC->n_atom; i++) {
+      y = *(pSPARC->atom_pos+1+3*i);
+      if (y < 0 || y > pSPARC->range_y)
+	{
+	  y = fmod(y,pSPARC->range_y);
+	  *(pSPARC->atom_pos+1+3*i) = y + (y<0.0)*pSPARC->range_y;
+	}
+    }
+  } else if (rank == 0) {
+    // for Dirichlet BC, exit if atoms goes out of the domain
+    double y;
+    for (i = 0; i < pSPARC->n_atom; i++) {
+      y = *(pSPARC->atom_pos+1+3*i);
+      if (y < 0 || y > pSPARC->range_y)
+	{
+	  printf("\nERROR: position of atom # %d is out of the domain with Dirichlet BC!\n",i+1);
+	  exit(EXIT_FAILURE);
+	}
+    }
+  }
+
+  if (pSPARC->BCz == 0) {
+    double z;
+    for (i = 0; i < pSPARC->n_atom; i++) {
+      z = *(pSPARC->atom_pos+2+3*i);
+      if (z < 0 || z > pSPARC->range_z)
+	{
+	  z = fmod(z,pSPARC->range_z);
+	  *(pSPARC->atom_pos+2+3*i) = z + (z<0.0)*pSPARC->range_z;
+	}
+    }
+  } else if (rank == 0){
+    // for Dirichlet BC, exit if atoms goes out of the domain
+    double z;
+    for (i = 0; i < pSPARC->n_atom; i++) {
+      z = *(pSPARC->atom_pos+2+3*i);
+      if (z < 0 || z > pSPARC->range_z)
+	{
+	  printf("\nERROR: position of atom # %d is out of the domain with Dirichlet BC!\n",i+1);
+	  exit(EXIT_FAILURE);
+	}
+    }
+  }
+
 }
 
 /**
@@ -498,7 +569,7 @@ void reassign_atoms_info(SPARC_OBJ *pSPARC, int natoms, double *atom_pos, double
 int read_socket_header(SPARC_OBJ *pSPARC, int *status)
 {
   int rank, size, rank0_finish;
-  double sleep_interval = 1.0;	// Checking every 0.5 seconds
+  double sleep_interval = 0.1;	// Checking every 0.5 seconds
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
