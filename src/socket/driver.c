@@ -745,16 +745,24 @@ void stress_to_virial(SPARC_OBJ *pSPARC, double *virial)
   double volCell = pSPARC->Jacbdet * pSPARC->range_x * pSPARC->range_y * pSPARC->range_z;
   
   // This is the converted virial notation of the stress. For PBC (pSPARC->BC == 2) it's Ha/Bohr^3
-  double virial_calc[9] =
-    {
-      -pSPARC->stress[0] * volCell, -pSPARC->stress[1] * volCell, -pSPARC->stress[2] * volCell,
-      -pSPARC->stress[1] * volCell, -pSPARC->stress[3] * volCell, -pSPARC->stress[4] * volCell,
-      -pSPARC->stress[2] * volCell, -pSPARC->stress[4] * volCell, -pSPARC->stress[5] * volCell
-    };
-  // 2D stress cases
-  if (pSPARC->BC == 3){
+  double virial_calc[9] = {
+    -pSPARC->stress[0] * volCell, -pSPARC->stress[1] * volCell, -pSPARC->stress[2] * volCell,
+    -pSPARC->stress[1] * volCell, -pSPARC->stress[3] * volCell, -pSPARC->stress[4] * volCell,
+    -pSPARC->stress[2] * volCell, -pSPARC->stress[4] * volCell, -pSPARC->stress[5] * volCell
+  };
+
+  // 0D case. make sure all components are 0
+  if (pSPARC->BC == 1){
     if (rank == 0)
-      printf("The simulation has 2D stress tensor in Ha/Bohr**2. The equivalent value in periodic system will be returned!");
+      printf("You're simulating an isolated system, no stress will be calculated. Zero stress tensor will be send to the socket server\n");
+    for (int i; i < 9; i++){
+      virial_calc[i]= 0.0;
+    }
+  }
+  // 2D stress cases
+  else if (pSPARC->BC == 3){
+    if (rank == 0)
+      printf("The simulation has 2D stress tensor in Ha/Bohr**2. The equivalent value in periodic system will be returned!\n");
     // Periodic in xy-
     if (pSPARC->BCx == 0 && pSPARC->BCy == 0){
       for (int i; i < 9; i++){
@@ -775,7 +783,7 @@ void stress_to_virial(SPARC_OBJ *pSPARC, double *virial)
   // 1D stress cases
   else if (pSPARC->BC == 4){
     if (rank == 0)
-      printf("The simulation has 1D stress tensor in Ha/Bohr. The equivalent value in periodic system will be returned!");
+      printf("The simulation has 1D stress tensor in Ha/Bohr. The equivalent value in periodic system will be returned!\n");
     // Periodic in x-
     if (pSPARC->BCx == 0){
       for (int i; i < 9; i++){
@@ -797,10 +805,10 @@ void stress_to_virial(SPARC_OBJ *pSPARC, double *virial)
   /* Cyclic or helix systems, copy from stress.c */
   else if (pSPARC->BC >= 5 && pSPARC->BC <= 7){
     if (rank == 0)
-      printf("The simulation has 1D stress tensor in Ha/Bohr (cyclic or helix boundaries). The equivalent value in periodic system will be returned!");
+      printf("The simulation has 1D stress tensor in Ha/Bohr (cyclic or helix boundaries). The equivalent value in periodic system will be returned!\n");
     for (int i; i < 9; i++){
       virial_calc[i] /= (M_PI * ( pow(pSPARC->xout,2.0) - pow(pSPARC->xin,2.0) ) ) ;
-        }
+    }
   }
 #ifdef DEBUG
   if (rank == 0)
