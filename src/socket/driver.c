@@ -744,15 +744,24 @@ void stress_to_virial(SPARC_OBJ *pSPARC, double *virial)
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   double volCell = pSPARC->Jacbdet * pSPARC->range_x * pSPARC->range_y * pSPARC->range_z;
   
-  // This is the converted virial notation of the stress. For PBC (pSPARC->BC == 2) it's Ha/Bohr^3
+  // This is the general form for the converted virial notation of the stress. For PBC (pSPARC->BC == 2) it's Ha/Bohr^3
+  // In other BCs, we should do post processing
   double virial_calc[9] = {
     -pSPARC->stress[0] * volCell, -pSPARC->stress[1] * volCell, -pSPARC->stress[2] * volCell,
     -pSPARC->stress[1] * volCell, -pSPARC->stress[3] * volCell, -pSPARC->stress[4] * volCell,
     -pSPARC->stress[2] * volCell, -pSPARC->stress[4] * volCell, -pSPARC->stress[5] * volCell
   };
 
+  // Stress not calculated, return zero-tensor
+  if (pSPARC->Calc_stress == 0){
+    if (rank == 0)
+      printf("Stress is not calculated in this system. Will return zero-stress tensor to the socket server.\n");
+    for (int i; i < 9; i++){
+      virial_calc[i]= 0.0;
+    }
+  }
   // 0D case. make sure all components are 0
-  if (pSPARC->BC == 1){
+  else if (pSPARC->BC == 1){
     if (rank == 0)
       printf("You're simulating an isolated system, no stress will be calculated. Zero stress tensor will be send to the socket server\n");
     for (int i; i < 9; i++){
@@ -845,7 +854,7 @@ int write_forces_to_socket(SPARC_OBJ *pSPARC)
     ret &= (writeBuffer_double_vec(pSPARC, ipi_forces, 3 * natoms) + 1);
     ret &= (writeBuffer_double_vec(pSPARC, ipi_virial, 9) + 1);
     // No more message to send
-    // TODO: what about output the SPARC serialization?
+    // SPARC serialization should be handled by the SPARC protocol in Python API
     ret &= (writeBuffer_int(pSPARC, 0) + 1);
   }
   ret -= 1;
