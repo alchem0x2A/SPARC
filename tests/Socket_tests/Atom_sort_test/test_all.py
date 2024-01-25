@@ -63,9 +63,8 @@ def sparc_socket():
         atoms.calc = calc
         opt = BFGS(atoms, trajectory="sparc-socket.traj")
         opt.run(fmax=0.03)
-    images = read("h2o_test/", ":")
-    assert len(images) < 10
-    return atoms.copy()
+    assert opt.get_number_of_steps() <= 10 # For the correct mesh spacing, opt should be very close
+    return
 
 
 def main():
