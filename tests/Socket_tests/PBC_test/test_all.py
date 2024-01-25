@@ -11,7 +11,6 @@ from subprocess import PIPE, Popen
 
 import ase
 import numpy as np
-import pytest
 from ase.build import bulk, molecule
 from ase.calculators.singlepoint import SinglePointCalculator
 from ase.calculators.socketio import SocketIOCalculator
