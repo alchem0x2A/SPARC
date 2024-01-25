@@ -19,7 +19,7 @@ from sparc import SPARC
 os.environ["SPARC_PSP_PATH"] = "../../../psps/"
 
 sparc_params = {
-    "h": 0.28,
+    "h": 0.22,
     "PRECOND_KERKER_THRESH": 0,
     "ELEC_TEMP_TYPE": "Fermi-Dirac",
     "ELEC_TEMP": 300,
@@ -31,15 +31,15 @@ sparc_params = {
     "PRINT_FORCES": 1,
 }
 
+rats = [1.0, 1.01, 1.02, 1.03, 1.04, 1.0, 0.99, 0.98, 0.97, 0.96]
 
 def make_images():
     atoms = bulk("Al", cubic=True)
 
     images = []
-    rats = [1.0, 1.01, 1.02, 1.03, 1.04, 1.0, 0.99, 0.98, 0.97, 0.96]
     for i in range(len(rats)):
         at = atoms.copy()
-        at.rattle(0.1, seed=i)
+        # at.rattle(0.1, seed=i)
         cell_origin = at.cell.copy()
         rat = rats[i]
         cell = cell_origin * [rat, rat, rat]
@@ -56,10 +56,13 @@ def sparc_singlepoint():
     out_images = []
     for i, img in enumerate(images):
         # relateive to the path
+        rat = rats[i]
+        params = sparc_params.copy()
+        params["h"] *= rat
         calc = SPARC(
             directory=f"sp_image{i:02d}",
             command="mpirun -n 2 --oversubscribe ../../../../lib/sparc",
-            **sparc_params,
+            **params,
         )
         img.calc = calc
         e = img.get_potential_energy()
@@ -139,7 +142,9 @@ def main():
     print("Ediff, ", np.max(np.abs(ediff)))
     print("Fdiff, ", np.max(np.abs(fdiff)))
     print("Sdiff, ", np.max(np.abs(sdiff)))
-
+    assert np.max(np.abs(ediff)) < 1.e-3
+    assert np.max(np.abs(fdiff)) < 5.e-3
+    assert np.max(np.abs(ediff)) < 1.e-3
 
 if __name__ == "__main__":
     main()

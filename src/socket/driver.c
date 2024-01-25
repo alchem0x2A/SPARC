@@ -21,7 +21,7 @@
 #include "initialization.h"
 /* #include "orbitalElecDensInit.h" */
 #include "electronicGroundState.h"
-/* #include "relax.h" */
+#include "relax.h"
 /* #include "md.h" */
 
 /* Tools to be used in socket interface. Don't need #ifdef switches */
@@ -352,43 +352,29 @@ int readBuffer_string(SPARC_OBJ *pSPARC, char *str, int len)
   return ret;
 }
 
-/**
- * @brief  Function that reassign atomic positions / lattice vectors etc to SPARC_OBJ
- *         This function will be used at each initialization / single point loop
- *         This function is MPI safe
- *         TODO: check if need strict atoms size check
- * **/
-
-void reassign_atoms_info(SPARC_OBJ *pSPARC, int natoms, double *atom_pos, double *lattice, double *reci_lattice)
-{
+/**@brief Function to reinitialize the mesh for SPARC object after changing the lattice
+          pSPARC->LatVec should already be assigned
+ **/
+void reinit_mesh(SPARC_OBJ *pSPARC){
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  // For now only support natoms == n_atom
-  if (natoms != pSPARC->n_atom)
-    {
-      if (rank == 0)
-	printf("SPARC's socket interface currently does not support changing number of atoms yet! Exit...\n");
-      exit(EXIT_FAILURE);
-    }
-
-  // lattice and reciLattice are only useful for d3 calculations (?)
-  // memcpy(pSPARC->lattice, lattice, sizeof(double) * 9);
-  // memcpy(pSPARC->reciLattice, reci_lattice, sizeof(double) * 9);
-
-  // Very bad code for lattice change for now
-  // TODO: fix the cell type check
   double range_x, range_y, range_z;
+  /* double old_range_x, old_range_y, old_range_z; */
+  
   // TODO: should we disable latvec_scale in socket mode?
-  memcpy(pSPARC->LatVec, lattice, sizeof(double) * 9);
   range_x = sqrt(pSPARC->LatVec[0] * pSPARC->LatVec[0] + pSPARC->LatVec[1] * pSPARC->LatVec[1] + pSPARC->LatVec[2] * pSPARC->LatVec[2]);
   range_y = sqrt(pSPARC->LatVec[3] * pSPARC->LatVec[3] + pSPARC->LatVec[4] * pSPARC->LatVec[4] + pSPARC->LatVec[5] * pSPARC->LatVec[5]);
   range_z = sqrt(pSPARC->LatVec[6] * pSPARC->LatVec[6] + pSPARC->LatVec[7] * pSPARC->LatVec[7] + pSPARC->LatVec[8] * pSPARC->LatVec[8]);
+  /* old_range_x = pSPARC->range_x; */
   pSPARC->range_x = range_x;
+  /* old_range_y = pSPARC->range_y; */
   pSPARC->range_y = range_y;
+  /* old_range_z = pSPARC->range_z; */
   pSPARC->range_z = range_z;
 
   // Update the lattice matrix information like Jacbdet, LatUVec, etc
   Cart2nonCart_transformMat(pSPARC);
+  
 
   // Update finite difference delta
   pSPARC->delta_x = pSPARC->range_x/(pSPARC->numIntervals_x);
@@ -484,11 +470,19 @@ void reassign_atoms_info(SPARC_OBJ *pSPARC, int natoms, double *atom_pos, double
   }
   Calculate_PseudochargeCutoff(pSPARC);
 
+  
+  if (rank == 0){
+    write_output_reinit(pSPARC);
+  }
+}
 
-
-  pSPARC->atom_pos = (double *)malloc(sizeof(double) * 3 * natoms);
-  memcpy(pSPARC->atom_pos, atom_pos, sizeof(double) * 3 * natoms);
-
+/** @brief Function to map the atomic coordinates to the domain within LatVec.
+ *         will throw error if the positions are outside domain 
+ **/
+void map_atom_coord(SPARC_OBJ *pSPARC){
+   int rank;
+   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+   int i = 0;
   // map positions back into the domain if necessary, the function is taken from initialization.c
   if (pSPARC->BCx == 0) {
     double x;
@@ -558,7 +552,37 @@ void reassign_atoms_info(SPARC_OBJ *pSPARC, int natoms, double *atom_pos, double
 	}
     }
   }
+}
 
+/**
+ * @brief  Function that reassign atomic positions / lattice vectors etc to SPARC_OBJ
+ *         This function will be used at each initialization / single point loop
+ *         This function is MPI safe
+ *         TODO: check if need strict atoms size check
+ * **/
+
+
+
+void reassign_atoms_info(SPARC_OBJ *pSPARC, int natoms, double *atom_pos, double *lattice, double *reci_lattice)
+{
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  // For now only support natoms == n_atom
+  if (natoms != pSPARC->n_atom)
+    {
+      if (rank == 0)
+	printf("SPARC's socket interface currently does not support changing number of atoms yet! Exit...\n");
+      exit(EXIT_FAILURE);
+    }
+  
+  // TODO: fix the cell type check
+
+
+  pSPARC->atom_pos = (double *)malloc(sizeof(double) * 3 * natoms);
+  memcpy(pSPARC->atom_pos, atom_pos, sizeof(double) * 3 * natoms);
+  memcpy(pSPARC->LatVec, lattice, sizeof(double) * 9);
+  map_atom_coord(pSPARC);
+  reinit_mesh(pSPARC);
 }
 
 /**
