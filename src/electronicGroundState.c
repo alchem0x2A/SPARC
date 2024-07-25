@@ -83,6 +83,10 @@ void Calculate_electronicGroundState(SPARC_OBJ *pSPARC) {
             SCF_ind = pSPARC->RelaxCount + pSPARC->restartCount + (pSPARC->RestartFlag == 0);
         else
             SCF_ind = 1;
+#ifdef USE_SOCKET
+	if (pSPARC->SocketFlag == 1)
+	    SCF_ind = pSPARC->SocketSCFCount;
+#endif 
         if (pSPARC->REFERENCE_CUTOFF > 0.5*nn) {
             printf("\nWARNING: REFERENCE_CUFOFF (%.6f Bohr) > 1/2 nn (nearest neighbor) distance (%.6f Bohr) in SCF#%d\n",
                         pSPARC->REFERENCE_CUTOFF, 0.5*nn,  SCF_ind);
@@ -128,6 +132,8 @@ void Calculate_electronicGroundState(SPARC_OBJ *pSPARC) {
         }
         fclose(output_fp);
         // for static calculation, print energy to .static file
+	// if socket mode is activated, each static scf step is
+	// separated by comment lines
         if (pSPARC->MDFlag == 0 && pSPARC->RelaxFlag == 0) {
             if (pSPARC->PrintForceFlag == 1 || pSPARC->PrintAtomPosFlag == 1) {
                 static_fp = fopen(pSPARC->StaticFilename,"a");
@@ -526,6 +532,10 @@ void scf(SPARC_OBJ *pSPARC)
         else if(pSPARC->RelaxFlag >= 1)
             fprintf(output_fp,"                    Self Consistent Field (SCF#%d)                     \n",
                     pSPARC->RelaxCount + pSPARC->restartCount + (pSPARC->RestartFlag == 0));
+#ifdef USE_SOCKET
+        else if(pSPARC->SocketFlag == 1)
+	  fprintf(output_fp,"                    Self Consistent Field (SCF#%d)                     \n", pSPARC->SocketSCFCount);
+#endif
         else
             fprintf(output_fp,"                    Self Consistent Field (SCF#%d)                     \n",1);
         
